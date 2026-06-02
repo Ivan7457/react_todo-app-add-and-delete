@@ -14,6 +14,14 @@ enum FilterStatus {
   Completed = 'completed',
 }
 
+enum ErrorMessage {
+  Load = 'Unable to load todos',
+  Add = 'Unable to add a todo',
+  Delete = 'Unable to delete a todo',
+  Update = 'Unable to update a todo',
+  EmptyTitle = 'Title should not be empty',
+}
+
 export const App: React.FC = () => {
   const [filter, setFilter] = useState(FilterStatus.All);
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -32,7 +40,7 @@ export const App: React.FC = () => {
         setTodos(loadedTodos);
       })
       .catch(() => {
-        setErrorMessage('Unable to load todos');
+        setErrorMessage(ErrorMessage.Load);
       });
   }, []);
 
@@ -77,7 +85,7 @@ export const App: React.FC = () => {
     const trimmedTitle = title.trim();
 
     if (!title.trim()) {
-      setErrorMessage('Title should not be empty');
+      setErrorMessage(ErrorMessage.EmptyTitle);
 
       return;
     }
@@ -99,7 +107,7 @@ export const App: React.FC = () => {
         inputRef.current?.focus();
       })
       .catch(() => {
-        setErrorMessage('Unable to add a todo');
+        setErrorMessage(ErrorMessage.Add);
       })
       .finally(() => {
         setTempTodo(null);
@@ -116,7 +124,7 @@ export const App: React.FC = () => {
         setTodos(current => current.filter(todo => todo.id !== todoId));
       })
       .catch(() => {
-        setErrorMessage('Unable to delete a todo');
+        setErrorMessage(ErrorMessage.Delete);
       })
       .finally(() => {
         setProcessingIds(current => current.filter(pid => pid !== todoId));
@@ -134,7 +142,7 @@ export const App: React.FC = () => {
         );
       })
       .catch(() => {
-        setErrorMessage('Unable to update a todo');
+        setErrorMessage(ErrorMessage.Update);
       })
       .finally(() => {
         setProcessingIds(current => current.filter(pid => pid !== todo.id));
@@ -156,7 +164,7 @@ export const App: React.FC = () => {
             );
           })
           .catch(() => {
-            setErrorMessage('Unable to update a todo');
+            setErrorMessage(ErrorMessage.Update);
           })
           .finally(() => {
             setProcessingIds(current => current.filter(pid => pid !== odo.id));
@@ -166,9 +174,36 @@ export const App: React.FC = () => {
   };
 
   const clearCompleted = () => {
-    const completedTodos = todos.filter(tod => tod.completed);
+    const completedIds = todos.filter(tod => tod.completed).map(tod => tod.id);
 
-    completedTodos.forEach(to => deleteTodo(to.id));
+    setProcessingIds(current => [...current, ...completedIds]);
+
+    const deletePromises = completedIds.map(todoId =>
+      postService
+        .deletePost(todoId)
+        .then(() => ({ todoId, success: true }))
+        .catch(() => ({ todoId, success: false })),
+    );
+
+    Promise.all(deletePromises).then(results => {
+      const successfulIds = results
+        .filter(res => res.success)
+        .map(res => res.todoId);
+
+      const hasError = results.some(res => !res.success);
+
+      if (hasError) {
+        setErrorMessage(ErrorMessage.Delete);
+      }
+
+      setTodos(current =>
+        current.filter(todo => !successfulIds.includes(todo.id)),
+      );
+
+      setProcessingIds(current =>
+        current.filter(pid => !completedIds.includes(pid)),
+      );
+    });
   };
 
   return (
