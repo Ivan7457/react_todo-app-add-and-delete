@@ -25,7 +25,7 @@ enum ErrorMessage {
 export const App: React.FC = () => {
   const [filter, setFilter] = useState(FilterStatus.All);
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<ErrorMessage | null>(null);
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [inputValue, setInputValue] = useState('');
